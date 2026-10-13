@@ -108,7 +108,8 @@ $('#days').addEventListener('click', async (e) => {
   if (act === 'del') { state.days[i].splice(Number(e.target.closest('[data-k]').dataset.k), 1); }
   if (act === 'rand') { save(); renderPlan(); await randomInto(i); return; }
   save(); renderPlan(); showTab('search');
-  if (!act) $('#query').focus({ preventScroll: true });
+  // Auf dem Handy liegt die Suche unter dem Plan: dorthin scrollen statt die Tastatur zu öffnen
+  if (!act) matchMedia('(max-width: 900px)').matches ? $('.side').scrollIntoView({ behavior: 'smooth' }) : $('#query').focus({ preventScroll: true });
   refreshShop();
 });
 
