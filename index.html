@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mahlzeitplaner</title>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 <header class="top">
@@ -26,6 +26,7 @@
   <section class="plan">
     <h2>Dein Wochenplan <small id="range"></small></h2>
     <div id="days" class="days"></div>
+    <div class="planactions"><button class="ghost" id="icsBtn" title="Alle Gerichte als Kalendertermine (.ics) für Apple, Google, Samsung, Outlook">📅 In Kalender exportieren</button></div>
     <div class="preview">
       <h2>🛒 Einkaufsliste <small id="previewInfo"></small></h2>
       <div id="preview" class="plist"></div>
@@ -60,6 +61,7 @@
         <button type="submit">+</button>
       </form>
       <div class="export">
+        <button id="notesBtn" title="Teilen-Menü: Apple Notizen, Samsung Notes …">📝 Notizen</button>
         <button id="copyBtn">📋 Kopieren</button>
         <button id="txtBtn">⬇️ .txt</button>
         <button id="csvBtn">⬇️ .csv</button>
@@ -70,6 +72,6 @@
 </main>
 
 <div id="toast" class="toast" hidden></div>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>

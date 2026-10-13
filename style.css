@@ -105,3 +105,8 @@ a { color: var(--accent); }
 .meals { display: grid; gap: .5rem; min-width: 0; }
 .day .meal .icon { margin-left: auto; flex: none; }
 .day .empty { align-self: center; }
+
+.nutri { display: block; font-size: .8rem; color: var(--muted); margin-top: .1rem; }
+.nutri i { font-style: normal; opacity: .8; }
+.planactions { margin-top: .8rem; }
+@media print { .planactions { display: none; } }

@@ -71,6 +71,15 @@ function dayInfo(i) {
 }
 const stars = (v) => '★'.repeat(Math.round(v)) + '☆'.repeat(5 - Math.round(v));
 
+function nutriLine(id) {
+  const d = details[id];
+  if (failedIds.has(id)) return '<span class="nutri">Nährwerte nicht verfügbar</span>';
+  if (!d || d.v !== 2) return '<span class="nutri">Nährwerte werden geladen …</span>';
+  const n = d.nutrition;
+  return n ? `<span class="nutri">🔥 ${n.kcal} kcal · ${n.protein} g Eiweiß · ${n.fat} g Fett · ${n.carbs} g KH <i>pro Portion</i></span>`
+    : '<span class="nutri">Nährwerte nicht verfügbar</span>';
+}
+
 function renderPlan() {
   const first = dayInfo(0), last = dayInfo(6);
   $('#range').textContent = `${first.date} – ${last.date}`;
@@ -79,7 +88,8 @@ function renderPlan() {
     const list = meals.length
       ? meals.map((r, k) => `<div class="meal">${r.img ? `<img src="${esc(r.img)}" alt="" loading="lazy">` : ''}<div class="mt">
            <a href="${esc(r.url)}" target="_blank" rel="noopener" title="${esc(r.title)}">${esc(r.title)}</a>
-           <span class="rate"><span class="stars">${stars(r.rating)}</span> ${r.rating.toFixed(1)} · ${r.votes} Bewertungen${r.time ? ` · ${r.time} Min.` : ''}</span></div>
+           <span class="rate"><span class="stars">${stars(r.rating)}</span> ${r.rating.toFixed(1)} · ${r.votes} Bewertungen${r.time ? ` · ${r.time} Min.` : ''}</span>
+           ${nutriLine(r.id)}</div>
            <button class="icon" data-act="del" data-k="${k}" title="Entfernen">✕</button></div>`).join('')
       : `<span class="empty">+ Gericht wählen</span>`;
     const acts = `<div class="acts">${meals.length ? '<button class="icon" data-act="add" title="Weiteres Gericht hinzufügen">＋</button>' : ''}<button class="icon" data-act="rand" title="Zufälliges Gericht ${meals.length ? 'zusätzlich ' : ''}hinzufügen">🎲</button></div>`;
@@ -177,9 +187,16 @@ $('#randomWeekBtn').addEventListener('click', async () => {
 
 // ---------- Einkaufsliste ----------
 async function ensureDetails(id) {
-  if (details[id]) return details[id];
+  if (details[id] && details[id].v === 2) return details[id];
   const d = await api(`/recipes/${id}`);
+  const nu = d.nutrition || d.nutritions || null;
+  const num = (x) => { const n = Number(String(x ?? '').replace(',', '.')); return Number.isFinite(n) && n > 0 ? Math.round(n) : 0; };
+  const nutrition = nu && num(nu.kCalories ?? nu.kcal) ? {
+    kcal: num(nu.kCalories ?? nu.kcal), protein: num(nu.proteinContent ?? nu.protein),
+    fat: num(nu.fatContent ?? nu.fat), carbs: num(nu.carbohydrateContent ?? nu.carbs),
+  } : null;
   details[id] = {
+    v: 2, nutrition,
     servings: Number(d.servings) || 1,
     groups: (d.ingredientGroups || []).flatMap((g) => (g.ingredients || []).map((x) => ({
       name: (x.name || '').trim(), unit: (x.unit || '').trim(), amount: Number(x.amount) || 0,
@@ -190,6 +207,7 @@ async function ensureDetails(id) {
 }
 
 const fmt = (n) => (Math.round(n * 100) / 100).toString().replace('.', ',');
+const failedIds = new Set();
 let items = []; // {key, name, text}
 
 // Zutatennamen vereinheitlichen: "Zwiebel(n), gehackt" und "Zwiebeln" -> "zwiebel"
@@ -238,7 +256,7 @@ async function refreshShop() {
   const map = new Map(); let failed = 0;
   for (const id of ids) {
     let d;
-    try { d = await ensureDetails(id); } catch { failed++; continue; }
+    try { d = await ensureDetails(id); } catch { failed++; failedIds.add(id); continue; }
     const f = state.persons / d.servings;
     for (const x of d.groups) {
       const al = alias(x.name);
@@ -257,6 +275,7 @@ async function refreshShop() {
   })).sort((a, b) => a.name.localeCompare(b.name, 'de'));
   status.textContent = failed ? `⚠️ Bei ${failed} Rezept(en) konnten die Zutaten nicht geladen werden.` : `Zutaten für ${state.persons} Person(en) aus ${ids.length} Gericht(en), gleiche Zutaten aufsummiert.`;
   renderShop();
+  renderPlan(); // Nährwerte sind jetzt geladen
 }
 
 
@@ -311,12 +330,54 @@ $('#addItemForm').addEventListener('submit', (e) => {
 });
 
 // ---------- Export ----------
-function exportText() {
+function exportText(box = '[ ]') {
   const open = allItems().filter((i) => !state.checked[i.key]);
   const head = `Einkaufsliste (${dayInfo(0).date} – ${dayInfo(6).date}, ${state.persons} Personen)`;
   const meals = state.days.flatMap((m, i) => m.map((r) => `${dayInfo(i).name}: ${r.title}`));
-  return `${head}\n\n${grouped(open).map(([c, l]) => c.toUpperCase() + '\n' + l.map((i) => '[ ] ' + label(i)).join('\n')).join('\n\n')}\n\nGerichte:\n${meals.join('\n')}\n`;
+  return `${head}\n\n${grouped(open).map(([c, l]) => c.toUpperCase() + '\n' + l.map((i) => box + ' ' + label(i)).join('\n')).join('\n\n')}\n\nGerichte:\n${meals.join('\n')}\n`;
 }
+// Notizen (Apple Notizen, Samsung Notes): öffnet das Teilen-Menü, sonst Zwischenablage
+$('#notesBtn').addEventListener('click', async () => {
+  if (!needItems()) return;
+  const text = exportText('☐');
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Einkaufsliste', text }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(text); toast('Kopiert – jetzt in Notizen einfügen'); } catch { toast('Kopieren nicht möglich'); }
+});
+
+// Kalender (.ics): ein ganztägiger Termin je Gericht, Rezept-Link in der Beschreibung
+const icsEsc = (s) => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+function icsFold(line) {
+  const enc = new TextEncoder(); const out = []; let cur = '', bytes = 0, limit = 75;
+  for (const ch of line) {
+    const b = enc.encode(ch).length;
+    if (bytes + b > limit) { out.push(cur); cur = ''; bytes = 0; limit = 74; }
+    cur += ch; bytes += b;
+  }
+  out.push(cur);
+  return out.join('\r\n ');
+}
+function icsDate(offset) {
+  const [y, m, d] = state.startDate.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + offset);
+  return `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, '0')}${String(dt.getDate()).padStart(2, '0')}`;
+}
+function buildIcs() {
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mahlzeitplaner//DE', 'CALSCALE:GREGORIAN'];
+  state.days.forEach((meals, i) => meals.forEach((r, k) => lines.push(
+    'BEGIN:VEVENT', `UID:${icsDate(i)}-${r.id}-${k}@mahlzeitplaner`, `DTSTAMP:${stamp}`,
+    `DTSTART;VALUE=DATE:${icsDate(i)}`, `DTEND;VALUE=DATE:${icsDate(i + 1)}`,
+    `SUMMARY:${icsEsc(r.title)}`, `DESCRIPTION:${icsEsc(r.url)}`, `URL:${r.url}`, 'TRANSP:TRANSPARENT', 'END:VEVENT')));
+  lines.push('END:VCALENDAR');
+  return lines.map(icsFold).join('\r\n') + '\r\n';
+}
+$('#icsBtn').addEventListener('click', () => {
+  if (!state.days.some((m) => m.length)) return toast('Es sind noch keine Gerichte eingeplant');
+  download('mahlzeitplaner.ics', buildIcs(), 'text/calendar;charset=utf-8');
+});
+
 function download(name, text, type) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type }));

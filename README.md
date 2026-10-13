@@ -6,7 +6,9 @@ Wochenplaner für Mahlzeiten mit Rezepten von Chefkoch (nur Rezepte mit mindeste
 - Freie Wahl des Starttags der Woche
 - Rezeptsuche und zufällige Vorschläge
 - Einkaufsliste mit zusammengefassten Zutaten, nach Kategorien gegliedert
-- Export als Zwischenablage, `.txt`, `.csv` oder Druck
+- Nährwerte pro Portion (wenn bei Chefkoch hinterlegt)
+- Mehrere Gerichte pro Tag möglich
+- Export: Zwischenablage, `.txt`, `.csv`, Druck, Notizen (Teilen-Menü für Apple Notizen / Samsung Notes) und Kalender (`.ics`)
 
 ## Starten
 Voraussetzung: [Node.js](https://nodejs.org). Dann `start.bat` doppelklicken oder `node server.js` ausführen
