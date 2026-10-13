@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mahlzeitplaner</title>
+<link rel="stylesheet" href="style.css?v=6">
+</head>
+<body>
+<header class="top">
+  <h1>🍽️ Mahlzeitplaner</h1>
+  <div class="controls">
+    <label>Woche startet am
+      <input type="date" id="startDate">
+    </label>
+    <button class="ghost" id="todayBtn" title="Heute als Starttag">Heute</button>
+    <label>Personen
+      <input type="number" id="persons" min="1" max="20" value="2">
+    </label>
+    <button class="ghost" id="randomWeekBtn">🎲 Woche zufällig füllen</button>
+    <button class="ghost danger" id="clearBtn">Zurücksetzen</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="plan">
+    <h2>Dein Wochenplan <small id="range"></small></h2>
+    <div id="days" class="days"></div>
+    <div class="preview">
+      <h2>🛒 Einkaufsliste <small id="previewInfo"></small></h2>
+      <div id="preview" class="plist"></div>
+      <button class="ghost" id="toShop">Bearbeiten &amp; exportieren →</button>
+    </div>
+  </section>
+
+  <section class="side">
+    <nav class="tabs">
+      <button class="tab active" data-tab="search">Rezepte suchen</button>
+      <button class="tab" data-tab="shop">Einkaufsliste <span id="shopCount" class="badge"></span></button>
+    </nav>
+
+    <div id="tab-search" class="panel">
+      <p class="hint" id="activeHint"></p>
+      <form id="searchForm" class="searchbar">
+        <input type="search" id="query" placeholder="z. B. Lasagne, Linsensuppe, Curry …" autocomplete="off">
+        <button type="submit">Suchen</button>
+      </form>
+      <div class="chips" id="chips"></div>
+      <p class="note">Nur Chefkoch-Rezepte mit mindestens <b>4 Sternen</b> und <b>20 Bewertungen</b> werden angezeigt.</p>
+      <div id="status" class="status"></div>
+      <div id="results" class="results"></div>
+      <button id="moreBtn" class="ghost more" hidden>Mehr laden</button>
+    </div>
+
+    <div id="tab-shop" class="panel" hidden>
+      <div id="shopStatus" class="status"></div>
+      <div id="shopList"></div>
+      <form id="addItemForm" class="searchbar">
+        <input id="addItem" placeholder="Eigenen Artikel hinzufügen …">
+        <button type="submit">+</button>
+      </form>
+      <div class="export">
+        <button id="copyBtn">📋 Kopieren</button>
+        <button id="txtBtn">⬇️ .txt</button>
+        <button id="csvBtn">⬇️ .csv</button>
+        <button id="printBtn">🖨️ Drucken</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<script src="app.js?v=6"></script>
+</body>
+</html>
