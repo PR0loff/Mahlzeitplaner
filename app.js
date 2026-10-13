@@ -399,11 +399,11 @@ $('#printBtn').addEventListener('click', () => needItems() && window.print());
 
 // ---------- Steuerung ----------
 function showTab(t) {
-  $('#toShop').addEventListener('click', () => { showTab('shop'); $('#tab-shop').scrollIntoView({ behavior: 'smooth' }); });
-document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === t));
+  document.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === t));
   $('#tab-search').hidden = t !== 'search'; $('#tab-shop').hidden = t !== 'shop';
 }
 document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+$('#toShop').addEventListener('click', () => { showTab('shop'); $('#tab-shop').scrollIntoView({ behavior: 'smooth' }); });
 $('#startDate').addEventListener('change', (e) => { if (e.target.value) { state.startDate = e.target.value; save(); renderPlan(); } });
 $('#todayBtn').addEventListener('click', () => { state.startDate = iso(new Date()); save(); renderPlan(); });
 $('#persons').addEventListener('change', (e) => { state.persons = Math.min(20, Math.max(1, Number(e.target.value) || 1)); save(); renderPlan(); refreshShop(); });

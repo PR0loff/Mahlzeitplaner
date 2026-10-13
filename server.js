@@ -28,7 +28,10 @@ http.createServer((req, res) => {
   }
 
   let file = path.normalize(path.join(__dirname, url.pathname === '/' ? 'index.html' : url.pathname));
-  if (!file.startsWith(__dirname)) { res.writeHead(403); return res.end(); }
+  // Nur Dateien im Projektordner, keine versteckten wie .git/ oder .env
+  if (!file.startsWith(__dirname + path.sep) || path.relative(__dirname, file).split(path.sep).some((s) => s.startsWith('.'))) {
+    res.writeHead(403); return res.end();
+  }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); return res.end('Nicht gefunden'); }
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
