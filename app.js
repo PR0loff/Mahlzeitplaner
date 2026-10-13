@@ -16,9 +16,11 @@ const store = {
 };
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const state = Object.assign(
-  { startDate: iso(new Date()), persons: 2, days: Array(7).fill(null), active: 0, checked: {}, custom: [], removed: [] },
+  { startDate: iso(new Date()), persons: 2, days: Array.from({ length: 7 }, () => []), active: 0, checked: {}, custom: [], removed: [] },
   store.get('mp-state', {})
 );
+// Ältere Speicherstände (ein Gericht pro Tag) auf Listen umstellen
+state.days = Array.from({ length: 7 }, (_, i) => { const d = state.days[i]; return Array.isArray(d) ? d : d ? [d] : []; });
 const details = store.get('mp-details', {}); // Rezept-ID -> {servings, groups}
 let search = { query: '', offset: 0, total: Infinity, loading: false };
 let workingBase = null;
@@ -72,15 +74,16 @@ const stars = (v) => '★'.repeat(Math.round(v)) + '☆'.repeat(5 - Math.round(v
 function renderPlan() {
   const first = dayInfo(0), last = dayInfo(6);
   $('#range').textContent = `${first.date} – ${last.date}`;
-  $('#days').innerHTML = state.days.map((r, i) => {
+  $('#days').innerHTML = state.days.map((meals, i) => {
     const di = dayInfo(i);
-    const meal = r
-      ? `<div class="meal">${r.img ? `<img src="${esc(r.img)}" alt="" loading="lazy">` : ''}<div class="mt">
+    const list = meals.length
+      ? meals.map((r, k) => `<div class="meal">${r.img ? `<img src="${esc(r.img)}" alt="" loading="lazy">` : ''}<div class="mt">
            <a href="${esc(r.url)}" target="_blank" rel="noopener" title="${esc(r.title)}">${esc(r.title)}</a>
-           <span class="rate"><span class="stars">${stars(r.rating)}</span> ${r.rating.toFixed(1)} · ${r.votes} Bewertungen${r.time ? ` · ${r.time} Min.` : ''}</span></div></div>`
+           <span class="rate"><span class="stars">${stars(r.rating)}</span> ${r.rating.toFixed(1)} · ${r.votes} Bewertungen${r.time ? ` · ${r.time} Min.` : ''}</span></div>
+           <button class="icon" data-act="del" data-k="${k}" title="Entfernen">✕</button></div>`).join('')
       : `<span class="empty">+ Gericht wählen</span>`;
-    const acts = `<div class="acts"><button class="icon" data-act="rand" title="Zufälliges Gericht">🎲</button>${r ? '<button class="icon" data-act="del" title="Entfernen">✕</button>' : ''}</div>`;
-    return `<div class="day ${i === state.active ? 'active' : ''}" data-i="${i}"><div><div class="dname">${di.name}</div><div class="ddate">${di.date}</div></div>${meal}${acts}</div>`;
+    const acts = `<div class="acts">${meals.length ? '<button class="icon" data-act="add" title="Weiteres Gericht hinzufügen">＋</button>' : ''}<button class="icon" data-act="rand" title="Zufälliges Gericht ${meals.length ? 'zusätzlich ' : ''}hinzufügen">🎲</button></div>`;
+    return `<div class="day ${i === state.active ? 'active' : ''}" data-i="${i}"><div><div class="dname">${di.name}</div><div class="ddate">${di.date}</div></div><div class="meals">${list}</div>${acts}</div>`;
   }).join('');
   const a = dayInfo(state.active);
   $('#activeHint').textContent = `Gericht für ${a.name}, ${a.date} auswählen:`;
@@ -92,7 +95,7 @@ $('#days').addEventListener('click', async (e) => {
   const day = e.target.closest('.day'); if (!day) return;
   const i = Number(day.dataset.i), act = e.target.closest('[data-act]')?.dataset.act;
   state.active = i;
-  if (act === 'del') { state.days[i] = null; }
+  if (act === 'del') { state.days[i].splice(Number(e.target.closest('[data-k]').dataset.k), 1); }
   if (act === 'rand') { save(); renderPlan(); await randomInto(i); return; }
   save(); renderPlan(); showTab('search');
   if (!act) $('#query').focus({ preventScroll: true });
@@ -100,8 +103,8 @@ $('#days').addEventListener('click', async (e) => {
 });
 
 function assign(recipe) {
-  state.days[state.active] = recipe;
-  const next = state.days.findIndex((d, i) => !d && i !== state.active);
+  state.days[state.active].push(recipe);
+  const next = state.days.findIndex((d, i) => !d.length && i !== state.active);
   if (next !== -1) state.active = next;
   save(); renderPlan(); refreshShop();
   toast(`„${recipe.title}“ eingeplant`);
@@ -152,7 +155,7 @@ async function randomRecipe() {
   for (let tries = 0; tries < 4; tries++) {
     const q = RANDOM_QUERIES[Math.floor(Math.random() * RANDOM_QUERIES.length)];
     const { list } = await fetchPage(q, Math.floor(Math.random() * 3) * PAGE).catch(() => ({ list: [] }));
-    const ok = list.filter(qualifies).filter((r) => !state.days.some((d) => d && d.id === r.id));
+    const ok = list.filter(qualifies).filter((r) => !state.days.some((d) => d.some((m) => m.id === r.id)));
     if (ok.length) return ok[Math.floor(Math.random() * ok.length)];
   }
   return null;
@@ -163,12 +166,12 @@ async function randomInto(i) {
   try {
     const r = await randomRecipe();
     if (!r) return toast('Nichts Passendes gefunden – nochmal versuchen.');
-    state.days[i] = r; save(); renderPlan(); refreshShop();
+    state.days[i].push(r); save(); renderPlan(); refreshShop();
   } catch (e) { toast('Chefkoch nicht erreichbar'); }
 }
 $('#randomWeekBtn').addEventListener('click', async () => {
   const btn = $('#randomWeekBtn'); btn.disabled = true;
-  for (let i = 0; i < 7; i++) if (!state.days[i]) await randomInto(i);
+  for (let i = 0; i < 7; i++) if (!state.days[i].length) await randomInto(i);
   btn.disabled = false;
 });
 
@@ -228,7 +231,7 @@ function fmtPart(p) {
 }
 
 async function refreshShop() {
-  const ids = state.days.filter(Boolean).map((r) => r.id);
+  const ids = state.days.flat().map((r) => r.id);
   const status = $('#shopStatus');
   if (!ids.length) { items = []; renderShop(); status.textContent = 'Plane zuerst Gerichte ein – die Einkaufsliste entsteht automatisch.'; return; }
   status.textContent = 'Zutaten werden geladen …';
@@ -311,7 +314,7 @@ $('#addItemForm').addEventListener('submit', (e) => {
 function exportText() {
   const open = allItems().filter((i) => !state.checked[i.key]);
   const head = `Einkaufsliste (${dayInfo(0).date} – ${dayInfo(6).date}, ${state.persons} Personen)`;
-  const meals = state.days.map((r, i) => r ? `${dayInfo(i).name}: ${r.title}` : null).filter(Boolean);
+  const meals = state.days.flatMap((m, i) => m.map((r) => `${dayInfo(i).name}: ${r.title}`));
   return `${head}\n\n${grouped(open).map(([c, l]) => c.toUpperCase() + '\n' + l.map((i) => '[ ] ' + label(i)).join('\n')).join('\n\n')}\n\nGerichte:\n${meals.join('\n')}\n`;
 }
 function download(name, text, type) {
@@ -345,7 +348,7 @@ $('#todayBtn').addEventListener('click', () => { state.startDate = iso(new Date(
 $('#persons').addEventListener('change', (e) => { state.persons = Math.min(20, Math.max(1, Number(e.target.value) || 1)); save(); renderPlan(); refreshShop(); });
 $('#clearBtn').addEventListener('click', () => {
   if (!confirm('Wochenplan und Einkaufsliste zurücksetzen?')) return;
-  Object.assign(state, { days: Array(7).fill(null), active: 0, checked: {}, custom: [], removed: [] });
+  Object.assign(state, { days: Array.from({ length: 7 }, () => []), active: 0, checked: {}, custom: [], removed: [] });
   save(); renderPlan(); refreshShop();
 });
 

@@ -100,3 +100,8 @@ a { color: var(--accent); }
 .pgroup li { padding: .15rem 0; border-bottom: 1px dashed var(--line); }
 .pgroup li.done { text-decoration: line-through; color: var(--muted); }
 .plist .none { color: var(--muted); grid-column: 1 / -1; margin: 0; }
+
+.day { align-items: start; }
+.meals { display: grid; gap: .5rem; min-width: 0; }
+.day .meal .icon { margin-left: auto; flex: none; }
+.day .empty { align-self: center; }
